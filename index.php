@@ -75,7 +75,7 @@ $app->post('/(i[a-z\.]+)', function () use ($app) {
 	}
 
 	/**
-	 *  @todo Error handling for failed writes
+	 *  @todo Error handling/logging for failed writes
 	 */
 
 	// send response
@@ -97,7 +97,9 @@ try {
 } catch (\Exception $e) {
 	/**
 	 * @todo Log Errors
-	 * @todo Return Helpful Message
 	 */
+	$response = new Phalcon\Http\Response();
+	$response->setStatusCode(500, "Internal Errors");
+	$response->send();
 }
 
