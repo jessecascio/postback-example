@@ -29,30 +29,67 @@ $app = new Phalcon\Mvc\Micro($di);
 
 // Matches any route starting with i
 $app->post('/(i[a-z\.]+)', function () use ($app) {
-	$redis = $app->di->get('redis');
-	$post  = $app->request->getJsonRawBody();
+	$response = new Phalcon\Http\Response();
+	$redis    = $app->di->get('redis');
+	$post     = $app->request->getJsonRawBody();
 
-	// use pipeline for batch storage
-	$redis->pipeline(function ($pipe) use ($app, $post) {
-		foreach ($post->data as $data) {
-			$postback = $app->di->get('postback');
+	// verify parameters
+	$valid = true;
 
-			$postback->method = $post->endpoint->method;
-			$postback->url    = $post->endpoint->url;
-			$postback->data   = $data;
+	// should also make sure a valid method i.e. POST or GET
+	if (is_null($post->endpoint->method) || !trim($post->endpoint->method)) {
+		$valid = false;
+	}
+	if (is_null($post->endpoint->url) || !trim($post->endpoint->url)) {
+		$valid = false;
+	}
+	if (is_null($post->data) || !count($post->data)) {
+		$valid = false;
+	}
 
-			$pipe->lpush('job-queue', json_encode($postback));
-		}
-	});		
+	if (!$valid) {
+		$response->setStatusCode(400, "Invalid Parameters");
+		$response->send();
+		die();
+	}
+
+	try {
+
+		// use pipeline for batch storage
+		$redis->pipeline(function ($pipe) use ($app, $post) {
+			foreach ($post->data as $data) {
+				$postback = $app->di->get('postback');
+
+				$postback->method = $post->endpoint->method;
+				$postback->url    = $post->endpoint->url;
+				$postback->data   = $data;
+
+				$pipe->lpush('job-queue', json_encode($postback));
+			}
+		});		
+	} catch (\Exception $e) {
+		// unable to connect/write to db
+		$response->setStatusCode(500, "Internal Error");
+		$response->send();
+		die();
+	}
 
 	/**
 	 *  @todo Error handling for failed writes
 	 */
+
+	// send response
+	$response->setStatusCode(200, "Success");
+	$response->send();
+	die();
 });
 
 // not found route
 $app->notFound(function () use ($app) {
-	
+	$response = new Phalcon\Http\Response();
+	$response->setStatusCode(404, "Not Found");
+	$response->send();
+	die();
 });
 
 try {
