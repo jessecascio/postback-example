@@ -32,15 +32,22 @@ $app->post('/(i[a-z\.]+)', function () use ($app) {
 	$redis = $app->di->get('redis');
 	$post  = $app->request->getJsonRawBody();
 
-	foreach ($post->data as $data) {
-		$postback = $app->di->get('postback');
+	// use pipeline for batch storage
+	$redis->pipeline(function ($pipe) use ($app, $post) {
+		foreach ($post->data as $data) {
+			$postback = $app->di->get('postback');
 
-		$postback->method = $post->endpoint->method;
-		$postback->url    = $post->endpoint->url;
-		$postback->data   = $data;
+			$postback->method = $post->endpoint->method;
+			$postback->url    = $post->endpoint->url;
+			$postback->data   = $data;
 
-		$redis->lpush('job-queue', json_encode($postback));
-	}
+			$pipe->lpush('job-queue', json_encode($postback));
+		}
+	});		
+
+	/**
+	 *  @todo Error handling for failed writes
+	 */
 });
 
 // not found route
