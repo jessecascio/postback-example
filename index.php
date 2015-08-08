@@ -17,23 +17,35 @@ $di->set('redis', function() {
    	return new Predis\Client('tcp://'.$ip.':'.$port);
 });
 
+// postback object
+$di->set('postback', function() {
+   	return new Model\Postback();
+});
+
 /**
  * Build app, set routes
  */
 $app = new Phalcon\Mvc\Micro($di);
 
-/**
- * Matches any route starting with i
- */
-$app->get('/(i[a-z\.]+)', function () use ($app) {
-	// $app->di->get('redis')
+// Matches any route starting with i
+$app->post('/(i[a-z\.]+)', function () use ($app) {
+	$redis = $app->di->get('redis')
+	$post  = $app->request->getJsonRawBody();
+
+	foreach ($post->data as $data) {
+		$postback = $app->di->get('postback');
+
+		$postback->method = $post->endpoint->method;
+		$postback->url    = $post->endpoint->url;
+		$postback->data   = $data;
+
+		$redis->lpush('job-queue', json_encode($postback));
+	}
 });
 
-/**
- * Default route handler
- */
+// not found route
 $app->notFound(function () use ($app) {
-
+	
 });
 
 try {
