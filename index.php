@@ -29,7 +29,7 @@ $app = new Phalcon\Mvc\Micro($di);
 
 // Matches any route starting with i
 $app->post('/(i[a-z\.]+)', function () use ($app) {
-	$redis = $app->di->get('redis')
+	$redis = $app->di->get('redis');
 	$post  = $app->request->getJsonRawBody();
 
 	foreach ($post->data as $data) {
