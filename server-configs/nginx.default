@@ -1,10 +1,10 @@
-
+# sample Nginx config
 server {
 
     listen 80 default_server;
     listen [::]:80 default_server ipv6only=on;
 
-    root /usr/share/nginx/html/php;
+    root /usr/share/nginx/html/postback-example/php;
     index index.php index.html index.htm;
 
     server_name localhost;

@@ -1,7 +1,7 @@
 
 # /etc/supervisor/conf.d/daemon.conf
 [program:daemon]
-command=nodejs /usr/share/nginx/html/nodejs/daemon.js
+command=nodejs /usr/share/nginx/html/postback-example/nodejs/daemon.js
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/supervisor.daemon.err.log
