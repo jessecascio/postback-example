@@ -17,9 +17,15 @@ $di->set('redis', function() {
    	return new Predis\Client('tcp://'.$ip.':'.$port);
 });
 
-// postback object
-$di->set('postback', function() {
-   	return new Model\Postback();
+// poststore service
+$di->set('poststore', function() use ($di) {
+	// constructor injection
+   	return new Service\PostStore($di->get('redis'));
+});
+
+// rawpost model
+$di->set('rawpost', function() {
+   	return new Model\RawPost();
 });
 
 /**
@@ -30,61 +36,37 @@ $app = new Phalcon\Mvc\Micro($di);
 // Matches any route starting with i
 $app->post('/(i[a-z\.]+)', function () use ($app) {
 	$response = new Phalcon\Http\Response();
-	$redis    = $app->di->get('redis');
-	$post     = $app->request->getJsonRawBody();
+	
+	// collect json data
+	$rawpost = $app->di->get('rawpost');
+	$rawpost->setRawpost($app->request->getJsonRawBody(true));
 
-	// verify parameters
-	$valid = true;
-
-	// should also make sure a valid method i.e. POST or GET
-	if (is_null($post->endpoint->method) || !trim($post->endpoint->method)) {
-		$valid = false;
-	}
-	if (is_null($post->endpoint->url) || !trim($post->endpoint->url)) {
-		$valid = false;
-	}
-	if (is_null($post->data) || !count($post->data)) {
-		$valid = false;
-	}
-
-	if (!$valid) {
-		$response->setStatusCode(400, "Invalid Parameters");
+	// set up storage service
+	$poststore = $app->di->get('poststore');
+	$poststore->setRawPost($rawpost);
+	
+	// make sure post is valid	
+	if (!$poststore->isValid()) {
+		$response->setStatusCode(400, $poststore->getError());
 		$response->send();
 		die();
 	}
 
-	try {
-
-		// use pipeline for batch storage
-		$redis->pipeline(function ($pipe) use ($app, $post) {
-			foreach ($post->data as $data) {
-				$postback = $app->di->get('postback');
-
-				$postback->method = $post->endpoint->method;
-				$postback->url    = $post->endpoint->url;
-				$postback->data   = $data;
-
-				$pipe->lpush('job-queue', json_encode($postback));
-			}
-		});		
-	} catch (\Exception $e) {
-		// unable to connect/write to db
+	// store the posts
+	if (!$poststore->storePosts()) {
+		// log internal error message
 		$response->setStatusCode(500, "Internal Error");
 		$response->send();
 		die();
 	}
 
-	/**
-	 *  @todo Error handling/logging for failed writes
-	 */
-
-	// send response
+	// success
 	$response->setStatusCode(200, "Success");
 	$response->send();
 	die();
 });
 
-// not found route
+// no found route
 $app->notFound(function () use ($app) {
 	$response = new Phalcon\Http\Response();
 	$response->setStatusCode(404, "Not Found");
@@ -95,11 +77,9 @@ $app->notFound(function () use ($app) {
 try {
 	$app->handle();
 } catch (\Exception $e) {
-	/**
-	 * @todo Log Errors
-	 */
+	// log internal error message
 	$response = new Phalcon\Http\Response();
-	$response->setStatusCode(500, "Internal Errors");
+	$response->setStatusCode(500, "Internal Error");
 	$response->send();
 }
 
