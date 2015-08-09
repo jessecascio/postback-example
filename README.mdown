@@ -1,2 +1,252 @@
 Postback Example 
 ================
+
+Postback code sample
+
+Overview
+---------
+
+Server Set Up
+-----------
+
+Before beginning it’s important to make sure the OS is up to date
+
+```apt-get update -y```
+
+### Firewall
+
+The only ports required are 80 for web requests and 22 for SSH access.  However, port 8083 and 8086 are left open to demonstrate data collection monitoring, but would be locked in a production setting.  **DISCLAIMER:** I didn’t actually enable the firewall as I’ve experienced losing SSH access when incorrectly adding rules, which requires a console log in to reset.  Since I don’t have console access I did not risk getting locked out.
+
+```
+apt-get install ufw -y
+
+ufw default deny incoming
+ufw default allow outgoing
+
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 8083/tcp
+ufw allow 8086/tcp
+
+ufw enable
+```
+
+This can  be verified from an outside the box
+
+```
+nmap -Pn <ip-address>
+```
+
+### Swap
+
+By default DigitalOcean doesn’t provide any swap, which can come in handy with unexpected spikes in workload.  I typically use 2X the amount of available RAM.  For this project I went with 4X as I foresee a high RAM demand and expect little data to be written to disk.  I also set the swappiness low, to help prevent the kernel from using the swap, and I lowered the cache pressure to help prolong inode caching. 
+
+```
+# Verify there is no swap currently
+free -m 
+
+# Check available hard drive space
+df -h
+
+# Make the swap file with correct permissions
+fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+
+# Activate swap
+swapon /swapfile
+
+# Update some of the default settings, ensure set on reboot
+sysctl vm.swappiness=10
+sysctl vm.vfs_cache_pressure=50
+echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+echo "vm.vfs_cache_pressure=50" | sudo tee -a /etc/sysctl.conf
+
+# Ensure swap is enabled on system reboot
+echo "/swapfile   none    swap    sw    0   0" | sudo tee -a /etc/fstab
+
+# Verify
+free -m
+```
+
+### Supervisor
+
+[SupervisorD](http://supervisord.org/) is a daemon process for monitoring services on a box.  This helps ensure that service are always running and restarted in case of failure.  In enterprise environments I’ve typically used Nagios for more robust service handling and alerting, but for this project I chose SupervisorD.
+
+```
+apt-get install -y supervisor
+``` 
+
+It’s important to disable Ubuntu from managing services as there will be conflicts on server reboot if both Ubuntu and SupervisorD are trying to init the same service.
+
+```
+# View configurable services
+service --status-all
+
+# Disable a service
+update-rc.d -f <service-name> remove
+``` 
+
+Some useful commands when working with SupervisorD
+
+```
+# see actively managed services
+supervisorctl status
+
+# reread config files
+supervisorctl reread
+
+# activate config file changes
+supervisorctl update
+
+# restart a service
+supervisorctl restart <service-name>
+```
+
+Typical workflow for managing services with SupervisorD:
+
+1. install service
+
+2. turn service off
+
+3. ensure service wont auto boot
+
+4. setup supervisor conf file
+
+5. reread/update supervisor conf 
+
+Sample config files can be found in server-configs/supervisor.templates.  Each template should be placed in it’s own file.
+
+### Monitoring
+
+For metrics monitoring I used a combination of [InfluxDB](https://influxdb.com/) and [CollectD](https://collectd.org/).  CollectD is a daemon process that can be configured to monitor usage stats for various Linux services, while InfluxDB is a time series database for storing the data.  **NOTE:** Im still a version behind on InfluxDB.  I would recommend using 0.9.x. in production environments.  
+
+```
+# install InfluxDB
+wget http://influxdb.s3.amazonaws.com/influxdb_0.8.8_amd64.deb -O /tmp/influxdb.deb 
+dpkg -i /tmp/influxdb.deb 
+rm /tmp/influxdb.deb
+
+# install CollectD
+apt-get install -y collectd collectd-util
+
+# stop the services
+service collectd stop
+service influxdb stop
+
+# disable services
+update-rc.d -f influxdb remove
+update-rc.d -f collectd remove
+```
+
+Before adding the services to supervisor update the config files.  See the server templates for updates.
+
+Changes needed for InfluxDB
+
+```
+[input_plugins.collectd]
+	enabled = true
+	address = "127.0.0.1" # If not set, is actually set to bind-address.
+	port = 25826
+	database = "monitor"
+	typesdb = "/usr/share/collectd/types.db" # The path to the collectd types.db file
+```
+
+Changes needed for CollectD
+```
+LoadPlugin logfile
+LoadPlugin syslog
+
+<Plugin logfile>
+	LogLevel "info"
+	File STDOUT
+	Timestamp true
+	PrintSeverity false
+</Plugin>
+
+LoadPlugin cpu
+LoadPlugin load
+LoadPlugin memory
+LoadPlugin swap
+
+<Plugin network>
+	Server "127.0.0.1" "25826"
+</Plugin>
+```
+
+After the config files have been updated the service can be attached to the supervisor.
+```
+# create the config files for the supservisor
+# see server-configs/supervisor.templates
+
+# update supervisor to manage services
+supervisorctl reread
+supervisorctl update
+
+# verify
+supervisorctl status
+```
+
+Once InfluxDB is up and running the admin panel can be accessed via port 8083 with credentials: root/root.  It’s important that the monitor database is manually created.
+
+### PHP Stack
+
+For the PHP stack I used Nginx and php-fpm for the webserver, and [Phalcon](https://phalconphp.com/en/) for the framework.  I chose Nginx over Apache because it has a much lower memory footprint, and Phalcon is written in C and is a PHP module for low overhead.  While the requirements were small enough to not need a framework, having things such as dependency injection and flexible routing proved to be very useful, and would allow for rapid expansion.
+
+```
+# server / php install
+apt-add-repository ppa:phalcon/stable -y
+apt-get update -y
+apt-get install -y nginx php5 php5-json php5-phalcon php5-fpm git
+
+# composer
+curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/tmp
+mv /tmp/composer.phar /usr/local/bin/composer
+chmod +x /usr/local/bin/composer
+
+# stop services
+service nginx stop
+service php5-fpm stop
+
+# disable services
+update-rc.d -f nginx remove
+update-rc.d -f php5-fpm remove
+echo "manual" | sudo tee -a /etc/init/php5-fpm.override
+
+```
+
+Since there is a only a single service running on the machine I chose to leave the document root as the default.  It’s important to update the PHP ini file though to work properly with FPM.
+
+```
+nano /etc/php5/fpm/php.ini
+cgi.fix_pathinfo=0
+```
+
+The Nginx config file should be updated as shown in the nginx.default file as well as the supervisor config files added and supervisorctl updated.
+
+### Redis
+
+I don’t have much experience working with Redis, I have primarily worked with Memcached.  So I went with the basic installation, and didn’t do any performance tuning.  While I found some suggestions on the internet, I did not have the time to fully implement/test so I avoided them.  Some things that stuck out to me as potentially important
+
+1. AOF persistence to save data on server restart
+
+2. Master / Slave architecture: PHP writes to master, Nodejs reads from slave
+
+```
+# install redis
+apt-get install redis-server
+
+# stop / disable
+service redis-server stop
+update-rc.d -f redis-server remove
+
+# add supervisor config and reload
+```
+
+### NodeJS Stack
+
+For NodeJS I chose not to use a framework.  While I prefer to use the structured MVC paradigm, I didn’t want to take the time trying to set up a framework structure.  I did however use some modules to help with the script.
+
+```
+apt-get install -y nodejs npm
+```

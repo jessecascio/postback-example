@@ -1,4 +1,5 @@
-# sample Nginx config
+# /etc/nginx/sites-available/default
+
 server {
 
     listen 80 default_server;
