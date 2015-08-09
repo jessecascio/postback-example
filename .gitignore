@@ -1,7 +1,7 @@
 
 **/vendor/
 **/.htaccess
-**/npm_modules/
+**/node_modules/
 
 local-notes.txt
 local-test.php

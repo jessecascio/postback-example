@@ -1,0 +1,7 @@
+{
+	"dependencies": {
+		"redis": "0.12.1",
+		"request": "2.60.0",
+		"is-my-json-valid": "2.12.1"
+	}
+}
