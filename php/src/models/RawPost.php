@@ -55,4 +55,28 @@ class RawPost
 	{
 		return $this->data;
 	}
+
+	/**
+	 * @param string
+	 */
+	public function setMethod($method)
+	{
+		$this->method = $method;
+	}
+
+	/**
+	 * @param string
+	 */
+	public function setUrl($url)
+	{
+		$this->url = $url;
+	}
+
+	/**
+	 * @param array
+	 */
+	public function setData(array $data)
+	{
+		$this->data = $data;
+	}
 }
