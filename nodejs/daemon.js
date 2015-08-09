@@ -64,14 +64,18 @@
 				// push the call out, could we batch request ???
 				request(data, function(e, r, body){
 				    if(e) {
-				        error.msg = e;
+				        error.msg     = e;
+				        error.request = data.url;
+				        error.data    = data.qs;
 						client.zadd(['error-log', new Date().getTime(), JSON.stringify(error)], function (e,r) {});
 				    } else {
 				    	// success
 				    	var success = {
 				    		'key': new Date().getTime(), // test if unique enough
 				    		'status': r.statusCode,
-				    		'body': body
+				    		'response': body,
+				    		'request': data.url,
+				    		'data': data.qs
 				    	};
 				        client.zadd(['request-log', new Date().getTime(), JSON.stringify(success)], function (e,r) {});
 				    }

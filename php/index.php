@@ -66,6 +66,31 @@ $app->post('/(i[a-z\.]+)', function () use ($app) {
 	die();
 });
 
+// view the request log
+$app->get('/requests', function () use ($app) {
+	$redis = $app->di->get('redis');
+
+	foreach ($redis->zrange('request-log', 0, time()) as $entry) {
+		$entry  = json_decode($entry, true);
+		$output = date('Y-m-d H:i:s', $entry['key']/1000)." - STATUS: ".$entry['status'].
+			" - URI: ".$entry['request']." - DATA: ".json_encode($entry['data']);
+
+		echo htmlspecialchars($output)."<br />";
+	}
+});
+
+// view the error log
+$app->get('/errors', function () use ($app) {
+	$redis = $app->di->get('redis');
+
+	foreach ($redis->zrange('error-log', 0, time()) as $entry) {
+		$entry  = json_decode($entry, true);
+		$output = date('Y-m-d H:i:s', $entry['key']/1000)." - MSG: ".json_encode($entry['msg']);
+
+		echo htmlspecialchars($output)."<br />";
+	}
+});
+
 // no found route
 $app->notFound(function () use ($app) {
 	$response = new Phalcon\Http\Response();
@@ -77,6 +102,7 @@ $app->notFound(function () use ($app) {
 try {
 	$app->handle();
 } catch (\Exception $e) {
+	echo $e->getMessage();
 	// log internal error message
 	$response = new Phalcon\Http\Response();
 	$response->setStatusCode(500, "Internal Error");
