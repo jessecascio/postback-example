@@ -257,18 +257,18 @@ The NodeJS script should be configured with the supervisor as well to ensure it 
 Additional Considerations
 --------------------------
 
-1. While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script, additional data such as method for callbacks and time taken would be useful information for tracking.
+- While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script, additional data such as method for callbacks and time taken would be useful information for tracking.
 
-2. An admin UI would be needed to monitor the system.  While I left direct access to InfluxDB open, that would be disabled and I would have an AngularJS frontend displaying server health as well as the various logs created by the application.  As it is now there are only basic views for listing the logs at routes:
+- An admin UI would be needed to monitor the system.  While I left direct access to InfluxDB open, that would be disabled and I would have an AngularJS frontend displaying server health as well as the various logs created by the application.  As it is now there are only basic views for listing the logs at routes:
 
 ```
 /requests
 /errors
 ```
 
-3. Safe shut down for the NodeJS daemon is needed otherwise there is no way to ensure that the script is not in the middle of working when force quit.  I would have a flag in Redis to allow the daemon to know if it should be active or not which would be checked before popping jobs off of the queue.
+- Safe shut down for the NodeJS daemon is needed otherwise there is no way to ensure that the script is not in the middle of working when force quit.  I would have a flag in Redis to allow the daemon to know if it should be active or not which would be checked before popping jobs off of the queue.
 
-4. The Collectd stats can be viewed through the browser via port 8083 with credentials root/root.  To see all the available stats
+- The Collectd stats can be viewed through the browser via port 8083 with credentials root/root.  To see all the available stats
 ```
 list series
 ```
@@ -280,4 +280,4 @@ select max(value) from "test/memory/memory-used" group by time(1h) limit 24
 
 Some plugins, such as the Redis plugin are not available by default and require additional compilation.
 
-5. While I did some testing with PHP there is none on the NodeJS side.  The way the daemon script is written, actually makes it fairly difficult to test  Ideally it would be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.
+- While I did some testing with PHP there is none on the NodeJS side.  The way the daemon script is written, actually makes it fairly difficult to test  Ideally it would be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.
