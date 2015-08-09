@@ -102,7 +102,6 @@ $app->notFound(function () use ($app) {
 try {
 	$app->handle();
 } catch (\Exception $e) {
-	echo $e->getMessage();
 	// log internal error message
 	$response = new Phalcon\Http\Response();
 	$response->setStatusCode(500, "Internal Error");
