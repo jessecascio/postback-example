@@ -1,8 +1,6 @@
 Postback Example 
 ================
 
-Postback code sample
-
 Server Set Up
 -----------
 
@@ -254,6 +252,8 @@ For NodeJS I chose not to use a framework.  While I prefer to use the structured
 apt-get install -y nodejs npm
 ```
 
+The NodeJS script should be configured with the supervisor as well to ensure it is always active.
+
 Additional Considerations
 --------------------------
 
@@ -279,3 +279,5 @@ select max(value) from "test/memory/memory-used" group by time(1h) limit 24
 ```
 
 Some plugins, such as the Redis plugin are not available by default and require additional compilation.
+
+5. While I did some testing with PHP there is none on the NodeJS side.  The way the daemon script is written, actually makes it fairly difficult to test  Ideally it would be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.
