@@ -224,6 +224,12 @@ cgi.fix_pathinfo=0
 
 The Nginx config file should be updated as shown in the nginx.default file as well as the supervisor config files added and supervisorctl updated.
 
+I used the PHP Phake library for mocking in my unit tests and the unit tests can be ran from the PHP folder
+
+```
+phpunit --configuration test/phpunit.xml --testsuite src
+```
+
 ### Redis
 
 I don’t have much experience working with Redis, I have primarily worked with Memcached.  So I went with the basic installation, and didn’t do any performance tuning.  While I found some suggestions on the internet, I did not have the time to fully implement/test so I avoided them.  Some things that stuck out to me as potentially important
@@ -250,3 +256,29 @@ For NodeJS I chose not to use a framework.  While I prefer to use the structured
 ```
 apt-get install -y nodejs npm
 ```
+
+Additional Considerations
+--------------------------
+
+1. While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script, additional data such as method for callbacks and time taken would be useful information for tracking.
+
+2. An admin UI would be needed to monitor the system.  While I left direct access to InfluxDB open, that would be disabled and I would have an AngularJS frontend displaying server health as well as the various logs created by the application.  As it is now there are only basic views for listing the logs at routes:
+
+```
+/requests
+/errors
+```
+
+3. Safe shut down for the NodeJS daemon is needed otherwise there is no way to ensure that the script is not in the middle of working when force quit.  I would have a flag in Redis to allow the daemon to know if it should be active or not which would be checked before popping jobs off of the queue.
+
+4. The Collectd stats can be viewed through the browser via port 8083 with credentials root/root.  To see all the available stats
+```
+list series
+```
+
+Then to view aggregated results, for say peak memory usage by hour for the day
+```
+select max(value) from "test/memory/memory-used" group by time(1h) limit 24
+```
+
+Some plugins, such as the Redis plugin are not available by default and require additional compilation.
