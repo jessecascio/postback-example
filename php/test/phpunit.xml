@@ -1,0 +1,13 @@
+<!-- phpunit \-\-configuration test/phpunit.xml \-\-testsuite src -->
+
+<phpunit colors="true" bootstrap="bootstrap.php">
+
+	<testsuites>
+
+		<testsuite name="src">
+			<directory>services</directory>
+		</testsuite>
+
+	</testsuites>
+
+</phpunit>

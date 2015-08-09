@@ -1,7 +1,7 @@
 <?php
 
 // load config, set up autoloading
-require_once 'config.php';
+include_once 'config.php';
 require_once 'vendor/autoload.php';
 
 /**

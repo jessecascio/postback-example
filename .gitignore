@@ -1,4 +1,8 @@
 
-vendor/
-.htaccess
+**/vendor/
+**/.htaccess
+**/npm_modules/
+
 local-notes.txt
+local-test.php
+local-test.js
