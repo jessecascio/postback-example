@@ -13,6 +13,8 @@
 
 	var pop = function () {
 
+		// prior to pop, verify the "active" token is set, allows graceful shutdown
+		
 		client.rpop('job-queue', function (e, r) {
 			var error = {
 				'key': new Date().getTime() // test if unique enough
