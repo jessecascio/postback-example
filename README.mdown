@@ -3,9 +3,6 @@ Postback Example
 
 Postback code sample
 
-Overview
----------
-
 Server Set Up
 -----------
 
