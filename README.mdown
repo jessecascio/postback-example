@@ -281,3 +281,5 @@ select max(value) from "test/memory/memory-used" group by time(1h) limit 24
 Some plugins, such as the Redis plugin are not available by default and require additional compilation.
 
 - While I did some testing with PHP there is none on the NodeJS side.  The way the daemon script is written, actually makes it fairly difficult to test  Ideally it would be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.
+
+- I didn’t get the chance to run any performance metrics, but I would start with Apache Bench to see the average latency for my POSTS.

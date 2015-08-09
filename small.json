@@ -1,0 +1,1 @@
+{"endpoint":{"method":"GET","url":"http:\/\/google.com\/data?key={key}&value={value}&foo={bar}"},"data":[{"key":"Azureus","value":"Dendrobates"},{"key":"Phyllobates","value":"Terribilis"}]}
