@@ -57,6 +57,8 @@
 				    method: json.method,
 				};
 
+				// add iteration here to try X amount of times
+				
 				// push the call out, could we batch request ???
 				request(data, function(e, r, body){
 				    if(e) {
