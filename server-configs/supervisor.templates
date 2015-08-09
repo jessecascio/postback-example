@@ -1,0 +1,40 @@
+
+# /etc/supervisor/conf.d/collectd.conf
+[program:collectd]
+command=collectd -C /etc/collectd/collectd.conf -f
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.collectd.err.log
+stdout_logfile=/var/log/supervisor.collectd.out.log
+
+# /etc/supervisor/conf.d/influxdb.conf
+[program:influxdb]
+command=/usr/bin/influxdb -config=/opt/influxdb/shared/config.toml
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.influxdb.err.log
+stdout_logfile=/var/log/supervisor.influxdb.out.log
+
+# /etc/supervisor/conf.d/nginx.conf
+[program:nginx]
+command=nginx -g 'daemon off;'
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.nginx.err.log
+stdout_logfile=/var/log/supervisor.nginx.out.log
+
+# /etc/supervisor/conf.d/php-fpm.conf
+[program:php-fpm]
+command=php5-fpm -F
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.php-fpm.err.log
+stdout_logfile=/var/log/supervisor.php-fpm.out.log
+
+# /etc/supervisor/conf.d/redis.conf
+[program:redis]
+command=redis-server
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.redis.err.log
+stdout_logfile=/var/log/supervisor.redis.out.log

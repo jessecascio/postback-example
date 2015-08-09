@@ -1,0 +1,31 @@
+
+server {
+
+    listen 80 default_server;
+    listen [::]:80 default_server ipv6only=on;
+
+    root /usr/share/nginx/html/php;
+    index index.php index.html index.htm;
+
+    server_name localhost;
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+
+        fastcgi_pass unix:/var/run/php5-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+    }
+
+    location /nginx_status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+    }
+
+    location / {
+        rewrite ^(.+)$ /index.php?_url=$1 last;
+    }
+
+}
