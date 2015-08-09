@@ -1,4 +1,12 @@
 
+# /etc/supervisor/conf.d/daemon.conf
+[program:daemon]
+command=nodejs /usr/share/nginx/html/nodejs/daemon.js
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor.daemon.err.log
+stdout_logfile=/var/log/supervisor.daemon.out.log
+
 # /etc/supervisor/conf.d/collectd.conf
 [program:collectd]
 command=collectd -C /etc/collectd/collectd.conf -f

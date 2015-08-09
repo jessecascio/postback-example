@@ -76,6 +76,7 @@
 		});
 	}
 
+	// continuously loop
 	setInterval(pop, 0);
 
 })();
