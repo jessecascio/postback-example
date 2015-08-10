@@ -10,7 +10,7 @@ Before beginning it’s important to make sure the OS is up to date
 
 ### Firewall
 
-The only ports required are 80 for web requests and 22 for SSH access.  However, port 8083 and 8086 are left open to demonstrate data collection monitoring, but would be locked in a production setting.  **DISCLAIMER:** I didn’t actually enable the firewall as I’ve experienced losing SSH access when incorrectly adding rules, which requires a console log in to reset.  Since I don’t have console access I did not risk getting locked out.
+The only ports required are 80 for web requests and 22 for SSH access.  However, port 8083 and 8086 are left open to demonstrate data collection monitoring, but would be locked in a production setting.  **NOTE:** I didn’t actually enable the firewall as I’ve experienced losing SSH access when incorrectly adding rules, which requires a console log in to reset.  Since I don’t have console access I did not risk getting locked out.
 
 ```
 apt-get install ufw -y
@@ -162,10 +162,16 @@ LoadPlugin syslog
 LoadPlugin cpu
 LoadPlugin load
 LoadPlugin memory
+LoadPlugin network
+LoadPlugin nginx
 LoadPlugin swap
 
 <Plugin network>
 	Server "127.0.0.1" "25826"
+</Plugin>
+
+<Plugin nginx>
+    URL "http://127.0.0.1:80/nginx_status?auto"
 </Plugin>
 ```
 
@@ -192,7 +198,7 @@ For the PHP stack I used Nginx and php-fpm for the webserver, and [Phalcon](http
 # server / php install
 apt-add-repository ppa:phalcon/stable -y
 apt-get update -y
-apt-get install -y nginx php5 php5-json php5-phalcon php5-fpm git
+apt-get install -y nginx php5 php5-json php5-phalcon php5-fpm php5-cli git
 
 # composer
 curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/tmp
@@ -254,32 +260,64 @@ apt-get install -y nodejs npm
 
 The NodeJS script should be configured with the supervisor as well to ensure it is always active.
 
+It’s important to note that since the NodeJS script is run as a daemon, that it will need to be restarted every time new code is pushed.  This can lead to issues as restarting the daemon while it is in the middle of a processing data can result  in data loss.  This is addressed in the additional considerations section.
+
+### Clone Code
+
+Finally clone the code to the base Nginx directory
+
+```
+# /usr/share/nginx/html
+git clone https://github.com/jessecascio/postback-example.git
+```
+
+And install dependencies
+
+```
+# postback-example/php
+composer install
+
+# postback-example/nodejs
+npm install
+```
+
 Additional Considerations
 --------------------------
 
-- While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script, additional data such as method for callbacks and time taken would be useful information for tracking.
-
-- An admin UI would be needed to monitor the system.  While I left direct access to InfluxDB open, that would be disabled and I would have an AngularJS frontend displaying server health as well as the various logs created by the application.  As it is now there are only basic views for listing the logs at routes:
-
+- An admin UI would be needed to monitor the system.  While I left direct access to InfluxDB open, that would be disabled in a production environment and I would have frontend written with a javascript framework displaying server health stats from collectd as well as the various logs created by the application.  As it is now there are only two basic views for listing the logs at routes:
 ```
 /requests
 /errors
 ```
+Requests shows all the NodeJS requests that were made and errors shows the errors the application encountered.
 
-- Safe shut down for the NodeJS daemon is needed otherwise there is no way to ensure that the script is not in the middle of working when force quit.  I would have a flag in Redis to allow the daemon to know if it should be active or not which would be checked before popping jobs off of the queue.
+- While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script would track work flow from init to job call, with the idea being we could retrace the steps of each request from PHP through Redis to NodeJS.
 
-- The Collectd stats can be viewed through the browser via port 8083 with credentials root/root.  To see all the available stats
+- Safe shut down for the NodeJS daemon is needed otherwise there is no way to ensure that the script is not in the middle of working when force quit.  I would have a flag in Redis to allow the daemon to know if it should be active or not.  The script would check for the active flag before popping jobs off of the queue.  This way when the daemon needs to be stopped for a code pull by deleting the flag it would kill itself and not be allowed to restart until the flag is turned back on.
+
+- The Collectd stats can be viewed through the browser via port 8083 with credentials root/root.  To see all the available stats (in monitor database)
 ```
 list series
 ```
 
 Then to view aggregated results, for say peak memory usage by hour for the day
 ```
-select max(value) from "test/memory/memory-used" group by time(1h) limit 24
+select max(value) from "Candidate.Playground-Jesse.Cascio/memory/memory-used" group by time(1h) limit 24
 ```
 
-Some plugins, such as the Redis plugin are not available by default and require additional compilation.
+Nginx active connection rate for the last 24 hours
+```
+select max(value) from "Candidate.Playground-Jesse.Cascio/nginx/nginx_connections-active" group by time(1m) limit 1440
+```
 
-- While I did some testing with PHP there is none on the NodeJS side.  The way the daemon script is written, actually makes it fairly difficult to test  Ideally it would be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.
+Some plugins, such as the Redis plugin are not available by default and require additional compilation, but would be added for additional collection.  I would not set this system up on the same machine, it would be placed on another box within the private network and only available internally to avoid InfluxDB and Collectd competing for resources.
 
-- I didn’t get the chance to run any performance metrics, but I would start with Apache Bench to see the average latency for my POSTS.
+- While I did some unit testing with PHP there is none on the NodeJS side.  The way the daemon script is written makes it fairly difficult to test.  It should be written more modular, similar to the PHP side, with proper models and services, which can be broken apart and tested separately.  Also in a system like this unit testing is not sufficient, as it is designed to test individual pieces.  I would want to implement an end to end behavioural testing library as well such as PHP Behat.
+
+-  Having not worked with Redis much it is hard for me to comment much on high availability.  I would definitely look into saving data to disk via AOF persistence, and consider setting up a master-slave relationship and a minimum.  One thing that is lacking for the queue is there's no way to acknowledge a message is completed.  For example, if the daemon pops a job and then dies, Redis is not tracking if that job is completed or not.  Ideally when the job is popped it’s not given to other daemons asking for work, but it is left in the queue until the caller acknowledges it was successfully completed.  More consideration would need to be given on how to handle that scenario.
+
+- I didn’t get the chance to run any performance metrics, but I would start with Apache Bench.  On the PHP side, the Nginx servers could be horizontally scaled behind a load balancer.  The Redis functionality could be shifted to a cluster of servers.  And numerous “worker” servers could be spawned up, all running the NodeJS daemon, to help speed up rate of which work is completed.
+
+- By using supervisor and disabling the Ubuntu management of services, I was able to confirm that services are auto started on server reboot.
+
+- I wasn’t able to address the concern of an infinite loop hitting the server.  Typically APIs have some throttling requirements, which could be another consideration for the project.
