@@ -289,7 +289,7 @@ Additional Considerations
 /requests
 /errors
 ```
-Requests shows all the NodeJS requests that were made and errors shows the errors the application encountered.
+Requests route shows all the NodeJS requests that were made and errors shows the errors the application encountered.  In an actual application views would not be embedded in routes in this manner, rather routes would return JSON data to be consumed by the client frontend.
 
 - While I did some logging and error handling, it would not be sufficient for a production system.  I would have both a Logger and a Timer utility class in the PHP application to log incoming requests as well as response times.  Additionally in the NodeJS script would track work flow from init to job call, with the idea being we could retrace the steps of each request from PHP through Redis to NodeJS.
 
