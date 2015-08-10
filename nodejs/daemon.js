@@ -22,7 +22,8 @@
 
 			// log any errors
 			if (e) {
-				error.msg = e;
+				error.msg          = e;
+				error.msg.location = "Failed Queue Pop";
 				client.zadd(['error-log', new Date().getTime(), JSON.stringify(error)], function (e,r) {});
 				return;
 			}
@@ -66,8 +67,9 @@
 				// push the call out, could we batch request ???
 				request(data, function(e, r, body){
 				    if(e) {
-				        error.msg  = e;
-				        error.data = data;
+				        error.msg          = e;
+				        error.msg.location = "Failed API Call";
+				        error.data         = data;
 						client.zadd(['error-log', new Date().getTime(), JSON.stringify(error)], function (e,r) {});
 				    } else {
 				    	// success
