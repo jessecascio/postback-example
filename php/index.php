@@ -75,14 +75,14 @@ $app->get('/requests', function () use ($app) {
 
 	foreach ($redis->zrange('request-log', 0, time()) as $entry) {
 		$entry = json_decode($entry, true);
-		$msg   = date('Y-m-d H:i:s', $entry['key']/1000)." - STATUS: ".$entry['status'].
+		$msg   = '<strong>'.date('Y-m-d H:i:s', $entry['key']/1000)."</strong> - STATUS: ".$entry['status'].
 			" - URI: ".$entry['request']." - METHOD: ".$entry['method']." - TIME: ".$entry['time'].
 			"(ms) DATA: ".json_encode($entry['data']);
 
 		array_unshift($output, $msg); // not efficient
 	}
 
-	echo implode('<br />', $output);
+	echo implode('<br /><br />', $output);
 });
 
 // view the error log
@@ -92,13 +92,13 @@ $app->get('/errors', function () use ($app) {
 
 	foreach ($redis->zrange('error-log', 0, time()) as $entry) {
 		$entry = json_decode($entry, true);
-		$msg   = date('Y-m-d H:i:s', $entry['key']/1000)." - MSG: ".json_encode($entry['msg']).
+		$msg   = '<strong>'.date('Y-m-d H:i:s', $entry['key']/1000)."</strong> - MSG: ".json_encode($entry['msg']).
 			" - DATA: ".json_encode($entry['data']);
 
 		array_unshift($output, $msg); // not efficient
 	}
 
-	echo implode('<br />', $output);
+	echo implode('<br /><br />', $output);
 });
 
 // no found route
