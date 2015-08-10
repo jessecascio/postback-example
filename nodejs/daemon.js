@@ -61,6 +61,8 @@
 
 				// add iteration here to try X amount of times
 				
+				var ms = new Date().getTime();
+
 				// push the call out, could we batch request ???
 				request(data, function(e, r, body){
 				    if(e) {
@@ -71,6 +73,8 @@
 				    	var success = {
 				    		'key': new Date().getTime(), // test if unique enough
 				    		'status': r.statusCode,
+				    		'method': data.method,
+				    		'time': new Date().getTime() - ms,
 				    		'response': body,
 				    		'request': data.url,
 				    		'data': data.qs

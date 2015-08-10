@@ -4,6 +4,8 @@
 include_once 'config.php';
 require_once 'vendor/autoload.php';
 
+error_reporting(0);
+
 /**
  * Set up the dependency injector
  */
@@ -74,7 +76,8 @@ $app->get('/requests', function () use ($app) {
 	foreach ($redis->zrange('request-log', 0, time()) as $entry) {
 		$entry = json_decode($entry, true);
 		$msg   = date('Y-m-d H:i:s', $entry['key']/1000)." - STATUS: ".$entry['status'].
-			" - URI: ".$entry['request']." - DATA: ".json_encode($entry['data']);
+			" - URI: ".$entry['request']." - METHOD: ".$entry['method']." - TIME: ".$entry['time'].
+			"(ms) DATA: ".json_encode($entry['data']);
 
 		array_unshift($output, $msg); // not efficient
 	}
