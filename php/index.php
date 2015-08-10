@@ -93,7 +93,7 @@ $app->get('/errors', function () use ($app) {
 	foreach ($redis->zrange('error-log', 0, time()) as $entry) {
 		$entry = json_decode($entry, true);
 		$msg   = date('Y-m-d H:i:s', $entry['key']/1000)." - MSG: ".json_encode($entry['msg']).
-			" - DATA: ".$entry['data'];
+			" - DATA: ".json_encode($entry['data']);
 
 		array_unshift($output, $msg); // not efficient
 	}
